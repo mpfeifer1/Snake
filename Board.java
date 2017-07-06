@@ -1,4 +1,3 @@
-
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.FontMetrics;
@@ -14,70 +13,75 @@ import javax.swing.ImageIcon;
 import javax.swing.JPanel;
 import javax.swing.Timer;
 
+import java.util.ArrayList;
+
 public class Board extends JPanel implements ActionListener {
-    private final int WIDTH = 300;
-    private final int HEIGHT = 300;
+    private final int WIDTH    = 300;
+    private final int HEIGHT   = 300;
     private final int DOT_SIZE = 10;
     private final int ALL_DOTS = 900;
     private final int RAND_POS = 29;
-    private final int DELAY = 140;
+    private final int DELAY    = 100;
 
-    private int x[] = new int[ALL_DOTS];
-    private int y[] = new int[ALL_DOTS];
+    private ArrayList<Integer> x = new ArrayList<Integer>();
+    private ArrayList<Integer> y = new ArrayList<Integer>();
 
-    private int dots;
-    private int dotsToAdd = 0;
     private int apple_x;
     private int apple_y;
-    private int goldenApple_x;
-    private int goldenApple_y;
 
-    private boolean left = false;
-    private boolean right = true;
-    private boolean up = false;
-    private boolean down = false;
+    private boolean left;
+    private boolean right;
+    private boolean up;
+    private boolean down;
 
-    private boolean inGame = true;
-    private boolean paused = false;
-    private boolean goldenActivated = false;
+    private boolean inGame;
+    private boolean paused;
+    private boolean goldenActivated;
 
     private Timer timer;
 
-    private Image ball;
     private Image apple;
-    private Image goldenApple;
+    private Image ball;
+    private Image golden;
     private Image head;
     private Image pause;
 
     public Board() {
         addKeyListener(new TAdapter());
-
         setBackground(Color.black);
 
-        ImageIcon iid = new ImageIcon(this.getClass().getResource("dot.png"));
-        ball = iid.getImage();
-
         ImageIcon iia = new ImageIcon(this.getClass().getResource("apple.png"));
-        apple = iia.getImage();
-
-        ImageIcon iiga = new ImageIcon(this.getClass().getResource("gapple.png"));
-        goldenApple = iiga.getImage();
-
+        ImageIcon iid = new ImageIcon(this.getClass().getResource("dot.png"));
+        ImageIcon iig = new ImageIcon(this.getClass().getResource("gapple.png"));
         ImageIcon iih = new ImageIcon(this.getClass().getResource("head.png"));
-        head = iih.getImage();
-
         ImageIcon iip = new ImageIcon(this.getClass().getResource("pause.png"));
-        pause = iip.getImage();
+
+        apple  = iia.getImage();
+        ball   = iid.getImage();
+        golden = iig.getImage();
+        head   = iih.getImage();
+        pause  = iip.getImage();
 
         setFocusable(true);
         initGame();
     }
 
     public void initGame() {
-        dots = 3;
-        for (int z = 0; z < dots; z++) {
-            x[z] = 50 - z*10;
-            y[z] = 50;
+        x.clear();
+        y.clear();
+
+        up = false;
+        down = false;
+        left = false;
+        right = false;
+
+        inGame = true;
+        paused = false;
+        goldenActivated = false;
+
+        for (int z = 0; z < 3; z++) {
+            x.add(150);
+            y.add(150);
         }
 
         locateApple();
@@ -88,161 +92,133 @@ public class Board extends JPanel implements ActionListener {
 
     public void paint(Graphics g) {
         super.paint(g);
-        for (int z = 0; z < dots; z++) {
-            if (z == 0)
-            {
-                g.drawImage(head, x[z], y[z], this);
-            }
-            else
-            {
-                g.drawImage(ball, x[z], y[z], this);
-            }
+
+        // Draw Snake
+        for (int z = 1; z < x.size(); z++) {
+            g.drawImage(ball, x.get(z), y.get(z), this);
         }
-        if (!goldenActivated)
-        {
+        g.drawImage(head, x.get(0), y.get(0), this);
+
+        // Draw Apple
+        if(!goldenActivated) {
             g.drawImage(apple, apple_x, apple_y, this);
         }
-        else
-        {
-            g.drawImage(goldenApple, goldenApple_x, goldenApple_y, this);
+        else {
+            g.drawImage(golden, apple_x, apple_y, this);
         }
-        if (paused) {
+
+        // Draw Pause
+        if(paused) {
             g.drawImage(pause, 0, 0, this);
         }
-        if (inGame) {
 
+        // Misc
+        if(inGame) {
             Toolkit.getDefaultToolkit().sync();
-            g.dispose();
-
-        } else {
+        }
+        else {
             gameOver(g);
         }
     }
 
     public void gameOver(Graphics g) {
-        String msg = "Game Over";
-        String msg2 = "Your Score: " + dots;
+        String msg1 = "Game Over";
+        String msg2 = "Your Score: " + x.size();
         String msg3 = "Press R to Retry";
         Font small = new Font("Helvetica", Font.BOLD, 16);
         FontMetrics metr = this.getFontMetrics(small);
 
         g.setColor(Color.white);
         g.setFont(small);
-        g.drawString(msg, (WIDTH - metr.stringWidth(msg)) / 2,
-            HEIGHT / 2 - 30);
+        g.drawString(msg1, (WIDTH - metr.stringWidth(msg1)) / 2, (HEIGHT / 2) - 30);
         g.drawString(msg2, (WIDTH - metr.stringWidth(msg2)) / 2, (HEIGHT / 2));
         g.drawString(msg3, (WIDTH - metr.stringWidth(msg3)) / 2, (HEIGHT / 2) + 30);
     }
 
     public void checkApple() {
-        if ((x[0] == apple_x) && (y[0] == apple_y)) {
-            dotsToAdd++;
+        if ((x.get(0) == apple_x) && (y.get(0) == apple_y)) {
+            // Add dots
+            if(goldenActivated) {
+                goldenActivated = false;
+                addDot();
+                addDot();
+            }
+            addDot();
+
+            // Set up new apple
             if (((int) (Math.random() * 10)) <= 1)
             {
                 goldenActivated = true;
-                locateGoldenApple();
             }
-            else
-            {
-                goldenActivated = false;
-                locateApple();
-            }
-        }
-    }
-
-    public void checkGoldenApple() {
-        if ((x[0] == goldenApple_x) && (y[0] == goldenApple_y)) {
-            dotsToAdd+=3;
-            goldenActivated = false;
             locateApple();
         }
     }
 
     public void move() {
-        for (int z = dots; z > 0; z--) {
-            x[z] = x[(z - 1)];
-            y[z] = y[(z - 1)];
-        }
+        x.remove(x.size()-1);
+        y.remove(y.size()-1);
 
-        if (left) {
-            x[0] -= DOT_SIZE;
-        }
+        x.add(0, x.get(0));
+        y.add(0, y.get(0));
 
-        if (right) {
-            x[0] += DOT_SIZE;
+        if(left) {
+            x.set(0, x.get(0) - DOT_SIZE);
         }
-
-        if (up) {
-            y[0] -= DOT_SIZE;
+        if(right) {
+            x.set(0, x.get(0) + DOT_SIZE);
         }
-
-        if (down) {
-            y[0] += DOT_SIZE;
+        if(up) {
+            y.set(0, y.get(0) - DOT_SIZE);
+        }
+        if(down) {
+            y.set(0, y.get(0) + DOT_SIZE);
         }
     }
 
     public void checkCollision() {
-        for (int z = dots; z > 0; z--) {
-            if ((z > 4) && (x[0] == x[z]) && (y[0] == y[z])) {
+        for (int z = 3; z < x.size(); z++) {
+            int a = (int) x.get(0);
+            int b = (int) x.get(z);
+            int c = (int) y.get(0);
+            int d = (int) y.get(z);
+            if ((a == b) && (c == d)) {
                 inGame = false;
             }
         }
 
-        if (y[0] > HEIGHT) {
+        if (y.get(0) > HEIGHT || y.get(0) < 0) {
             inGame = false;
         }
-
-        if (y[0] < 0) {
-            inGame = false;
-        }
-
-        if (x[0] > WIDTH) {
-            inGame = false;
-        }
-
-        if (x[0] < 0) {
+        if (x.get(0) > WIDTH || x.get(0) < 0) {
             inGame = false;
         }
     }
 
     public void locateApple() {
-        int r = (int) (Math.random() * RAND_POS);
-        apple_x = ((r * DOT_SIZE));
-        r = (int) (Math.random() * RAND_POS);
-        apple_y = ((r * DOT_SIZE));
-    }
+        int r1 = (int) (Math.random() * RAND_POS);
+        int r2 = (int) (Math.random() * RAND_POS);
+        apple_x = ((r1 * DOT_SIZE));
+        apple_y = ((r2 * DOT_SIZE));
 
-    public void locateGoldenApple(){
-        int r = (int) (Math.random() * RAND_POS);
-        goldenApple_x = ((r * DOT_SIZE));
-        r = (int) (Math.random() * RAND_POS);
-        goldenApple_y = ((r * DOT_SIZE));
-    }
-
-    public void addDots () {
-        if (dotsToAdd > 0)
-        {
-            dots++;
-            dotsToAdd--;
+        for(int i = 0; i < x.size(); i++) {
+            if(apple_x == x.get(i) && apple_y == y.get(i)) {
+                locateApple();
+            }
         }
+    }
+
+    public void addDot() {
+        int end = x.size() - 1;
+        x.add(end, x.get(end));
+        y.add(end, y.get(end));
     }
 
     public void actionPerformed(ActionEvent e) {
-
         if (inGame && !paused) {
-            if (!goldenActivated)
-            {
-                checkApple();
-            }
-            else
-            {
-                checkGoldenApple();
-            }
-            addDots();
+            checkApple();
             move();
             checkCollision();
         }
-
         repaint();
     }
 
@@ -275,21 +251,13 @@ public class Board extends JPanel implements ActionListener {
 
             if (key == KeyEvent.VK_P) 
             {
-                if (paused == false)
-                {
-                    paused = true;
-                }
-                else
-                {
-                    paused = false;
-                }
+                paused = !paused;
             }
+
             if ((key == KeyEvent.VK_R) && (!inGame))
             {
                 timer.stop();
                 initGame();
-                paused = false;
-                inGame = true;
             }
         }
     }
